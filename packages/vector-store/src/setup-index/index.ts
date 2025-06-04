@@ -1,135 +1,248 @@
-import fetch from 'node-fetch';
-import Papa from 'papaparse';
 import {
-  SearchClient,
   SearchIndexClient,
-  AzureKeyCredential
-} from '@azure/search-documents';
+  SimpleField,
+  ComplexField,
+  SearchSuggester,
+  SearchClient,
+  SearchDocumentsResult,
+  AzureKeyCredential,
+  odata,
+  SearchFieldArray,
+  SearchIndex,
+} from "@azure/search-documents";
+import type { Hotel, HotelIndex, HotelData } from "./models.js";
+import "dotenv/config";
 
-// Azure AI Search resource settings
-const SEARCH_ENDPOINT = 'https://YOUR-RESOURCE-NAME.search.windows.net';
-const SEARCH_ADMIN_KEY = 'YOUR-RESOURCE-ADMIN-KEY';
 
-// Azure AI Search index settings
-const SEARCH_INDEX_NAME = 'good-books';
-import SEARCH_INDEX_SCHEMA from './good-books-index.json' assert { type: 'json' };
+// Import data
+import indexFile from "./hotel-index.json" with { type: "json" };
+import dataFile from "./hotel-data.json" with { type: "json" };
+const indexDefinition: SearchIndex = indexFile as unknown as SearchIndex;
+const hotels: Hotel[] = (dataFile as HotelData).value;
 
-// Data settings
-const BOOKS_URL =
-  'https://raw.githubusercontent.com/Azure-Samples/azure-search-sample-data/main/good-books/books.csv';
-const BATCH_SIZE = 1000;
 
-// Create Search service client
-// used to upload docs into Index
-const client = new SearchClient(
-  SEARCH_ENDPOINT,
-  SEARCH_INDEX_NAME,
-  new AzureKeyCredential(SEARCH_ADMIN_KEY)
-);
-
-// Create Search service Index client
-// used to create new Index
-const clientIndex = new SearchIndexClient(
-  SEARCH_ENDPOINT,
-  new AzureKeyCredential(SEARCH_ADMIN_KEY)
-);
-
-// Insert docs into Search Index
-// in batch
-const insertData = async (data) => {
-  let batch = 0;
-  let batchArray = [];
-
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-
-    // Convert string data to typed data
-    // Types are defined in schema
-    batchArray.push({
-      id: row.book_id,
-      goodreads_book_id: parseInt(row.goodreads_book_id),
-      best_book_id: parseInt(row.best_book_id),
-      work_id: parseInt(row.work_id),
-      books_count: !row.books_count ? 0 : parseInt(row.books_count),
-      isbn: row.isbn,
-      isbn13: row.isbn13,
-      authors: row.authors.split(',').map((name) => name.trim()),
-      original_publication_year: !row.original_publication_year
-        ? 0
-        : parseInt(row.original_publication_year),
-      original_title: row.original_title,
-      title: row.title,
-      language_code: row.language_code,
-      average_rating: !row.average_rating ? 0 : parseFloat(row.average_rating),
-      ratings_count: !row.ratings_count ? 0 : parseInt(row.ratings_count),
-      work_ratings_count: !row.work_ratings_count
-        ? 0
-        : parseInt(row.work_ratings_count),
-      work_text_reviews_count: !row.work_text_reviews_count
-        ? 0
-        : parseInt(row.work_text_reviews_count),
-      ratings_1: !row.ratings_1 ? 0 : parseInt(row.ratings_1),
-      ratings_2: !row.ratings_2 ? 0 : parseInt(row.ratings_2),
-      ratings_3: !row.ratings_3 ? 0 : parseInt(row.ratings_3),
-      ratings_4: !row.ratings_4 ? 0 : parseInt(row.ratings_4),
-      ratings_5: !row.ratings_5 ? 0 : parseInt(row.ratings_5),
-      image_url: row.image_url,
-      small_image_url: row.small_image_url
-    });
-
-    console.log(`${i}`);
-
-    // Insert batch into Index
-    if (batchArray.length % BATCH_SIZE === 0) {
-      await client.uploadDocuments(batchArray);
-
-      console.log(`BATCH SENT`);
-      batchArray = [];
-    }
-  }
-  // Insert any final batch into Index
-  if (batchArray.length > 0) {
-    await client.uploadDocuments(batchArray);
-
-    console.log(`FINAL BATCH SENT`);
-    batchArray = [];
-  }
-};
-const bulkInsert = async () => {
-  // Download CSV Data file
-  const response = await fetch(BOOKS_URL, {
-    method: 'GET'
-  });
-  if (response.ok) {
-    console.log(`book list fetched`);
-    const fileData = await response.text();
-    console.log(`book list data received`);
-
-    // convert CSV to JSON
-    const dataObj = Papa.parse(fileData, {
-      header: true,
-      encoding: 'utf8',
-      skipEmptyLines: true
-    });
-    console.log(`book list data parsed`);
-
-    // Insert JSON into Search Index
-    await insertData(dataObj.data);
-    console.log(`book list data inserted`);
-  } else {
-    console.log(`Couldn\t download data`);
-  }
-};
-
-// Create Search Index
-async function createIndex() {
-  SEARCH_INDEX_SCHEMA.name = SEARCH_INDEX_NAME;
-
-  const result = await clientIndex.createIndex(SEARCH_INDEX_SCHEMA);
+// Get endpoint and apiKey from .env file
+const endpoint: string = process.env.SEARCH_API_ENDPOINT!!;
+const apiKey: string = process.env.SEARCH_API_KEY!!;
+if (!endpoint || !apiKey) {
+  throw new Error(
+    "Make sure to set valid values for endpoint and apiKey with proper authorization.",
+  );
 }
 
-await createIndex();
-console.log('index created');
+function printSearchIndex(searchIndex: SearchIndex) {
+  const { name, etag, defaultScoringProfile } = searchIndex;
+  console.log(
+    `Search Index name: ${name}, etag: ${etag}, defaultScoringProfile: ${defaultScoringProfile}`,
+  );
+}
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-await bulkInsert();
-console.log('data inserted into index');
+// Get Incoming Data
+
+async function createIndex(
+  searchIndexClient: SearchIndexClient,
+  indexName: string,
+  searchIndex: SearchIndex,
+) {
+  console.log(`Running Azure AI Search JavaScript quickstart...`);
+
+  // Delete the index if it already exists
+  indexName
+    ? await searchIndexClient.deleteIndex(indexName)
+    : console.log("Index doesn't exist.");
+
+  console.log("Creating index...");
+  const newIndex: SearchIndex = await searchIndexClient.createIndex(searchIndex);
+
+  // Print the new index
+  printSearchIndex(newIndex);
+}
+async function loadData(
+  searchClient: any,
+  hotels: any,
+) {
+  console.log("Uploading documents...");
+
+  let indexDocumentsResult = await searchClient.mergeOrUploadDocuments(hotels);
+
+    console.log(JSON.stringify(indexDocumentsResult));
+
+  console.log(
+    `Index operations succeeded: ${JSON.stringify(indexDocumentsResult.results[0].succeeded)}`,
+  );
+}
+
+// async function searchAllReturnAllFields(
+//   searchClient: SearchClient<Hotel>,
+//   searchText: string,
+// ) {
+//   console.log("Query #1 - return everything:");
+
+//   // Search Options
+//   // Without `select` property, all fields are returned
+//   const searchOptions = { includeTotalCount: true };
+
+//   // Search
+//   const { count, results } = await searchClient.search(
+//     searchText,
+//     searchOptions,
+//   );
+
+//   // Show results
+//   for await (const result of results) {
+//     console.log(`${JSON.stringify(result.document)}`);
+//   }
+
+//   // Show results count
+//   console.log(`Result count: ${count}`);
+// }
+// async function searchAllSelectReturnedFields(
+//   searchClient: SearchClient<Hotel>,
+//   searchText: string,
+// ) {
+//   console.log("Query #2 - search everything:");
+
+//   // Search Options
+//   // Narrow down the fields to return
+//   const selectFields: SearchFieldArray<Hotel> = [
+//     "HotelId",
+//     "HotelName",
+//     "Rating",
+//   ];
+//   const searchOptions = { includeTotalCount: true, select: selectFields };
+
+//   // Search
+//   const { count, results }: SearchDocumentsResult<Hotel> =
+//     await searchClient.search(searchText, searchOptions);
+
+//   // Show results
+//   for await (const result of results) {
+//     console.log(`${JSON.stringify(result.document)}`);
+//   }
+
+//   // Show results count
+//   console.log(`Result count: ${count}`);
+// }
+// async function searchWithFilterOrderByAndSelect(
+//   searchClient: SearchClient<Hotel>,
+//   searchText: string,
+//   filterText: string,
+// ) {
+//   console.log("Query #3 - Search with filter, orderBy, and select:");
+
+//   // Search Options
+//   // Narrow down the fields to return
+//   const searchOptions = {
+//     filter: odata`Address/StateProvince eq ${filterText}`,
+//     orderBy: ["Rating desc"],
+//     select: ["HotelId", "HotelName", "Rating"] as const, // Select only these fields
+//   };
+//   type SelectedHotelFields = Pick<Hotel, "HotelId" | "HotelName" | "Rating">;
+
+//   // Search
+//   const { count, results }: SearchDocumentsResult<SelectedHotelFields> =
+//     await searchClient.search(searchText, searchOptions);
+
+//   // Show results
+//   for await (const result of results) {
+//     console.log(`${JSON.stringify(result.document)}`);
+//   }
+
+//   // Show results count
+//   console.log(`Result count: ${count}`);
+// }
+// async function searchWithLimitedSearchFields(
+//   searchClient: SearchClient<Hotel>,
+//   searchText: string,
+// ) {
+//   console.log("Query #4 - Limit searchFields:");
+
+//   // Search Options
+//   const searchOptions = {
+//     select: ["HotelId", "HotelName", "Rating"] as const, // Select only these fields
+//     searchFields: ["HotelName"] as const,
+//   };
+//   type SelectedHotelFields = Pick<Hotel, "HotelId" | "HotelName" | "Rating">;
+
+//   // Search
+//   const { count, results }: SearchDocumentsResult<SelectedHotelFields> =
+//     await searchClient.search(searchText, searchOptions);
+
+//   // Show results
+//   for await (const result of results) {
+//     console.log(`${JSON.stringify(result.document)}`);
+//   }
+
+//   // Show results count
+//   console.log(`Result count: ${count}`);
+// }
+// async function searchWithFacets(
+//   searchClient: SearchClient<Hotel>,
+//   searchText: string,
+// ) {
+//   console.log("Query #5 - Use facets:");
+
+//   // Search Options
+//   const searchOptions = {
+//     facets: ["Category"], //For aggregation queries
+//     select: ["HotelId", "HotelName", "Rating"] as const, // Select only these fields
+//     searchFields: ["HotelName"] as const,
+//   };
+//   type SelectedHotelFields = Pick<Hotel, "HotelName">;
+
+//   // Search
+//   const { count, results }: SearchDocumentsResult<SelectedHotelFields> =
+//     await searchClient.search(searchText, searchOptions);
+
+//   // Show results
+//   for await (const result of results) {
+//     console.log(`${JSON.stringify(result.document)}`);
+//   }
+
+//   // Show results count
+//   console.log(`Result count: ${count}`);
+// }
+// async function lookupDocumentById(
+//   searchClient: SearchClient<Hotel>,
+//   key: string,
+// ) {
+//   console.log("Query #6 - Lookup document:");
+
+//   // Get document by ID
+//   // Full document returned, destructured into id and name
+//   const { HotelId: id, HotelName: name }: Hotel =
+//     await searchClient.getDocument(key);
+
+//   // Show results
+//   console.log(`HotelId: ${id}, HotelName: ${name}`);
+// }
+
+async function main(indexName: string, indexDef: SearchIndex, hotels: Hotel[]) {
+  // Create a new SearchIndexClient
+  const indexClient = new SearchIndexClient(
+    endpoint,
+    new AzureKeyCredential(apiKey),
+  );
+
+  // Create the index
+  await createIndex(indexClient, indexName, indexDef);
+
+  const searchClient = indexClient.getSearchClient(indexName);
+  //const searchClient = new SearchClient(endpoint, indexName, new AzureKeyCredential(apiKey));
+
+
+  // Load with data
+  console.log("Loading data...", indexName);
+  await loadData(searchClient, hotels);
+
+  wait(10000);
+
+
+}
+
+main(indexDefinition?.name, indexDefinition, hotels).catch((err) => {
+  console.error("The sample encountered an error:", err);
+});

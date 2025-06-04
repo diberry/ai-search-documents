@@ -2,8 +2,10 @@
   "name": "vector-store",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc --build",
+    "start:setup": "node -r dotenv/config dist/setup-index/index.js"
   },
   "keywords": [],
   "author": "",
@@ -12,5 +14,9 @@
   "dependencies": {
     "@azure/search-documents": "^12.1.0",
     "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "dotenv": "^16.5.0"
   }
 }
