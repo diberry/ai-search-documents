@@ -8,7 +8,7 @@
 import { SearchClient, AzureKeyCredential, SearchDocumentsResult } from "@azure/search-documents";
 import CreateChatCompletionResponse, { AzureOpenAI } from "openai";
 
-function getClients(): { openaiClient: AzureOpenAI, searchClient: SearchClient<{ HotelName: string; Description: string; Tags: string[] | string }>, modelName: string }  {
+function getClients(): { openaiClient: AzureOpenAI; searchClient: SearchClient<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>; modelName: string }  {
 
     const AZURE_SEARCH_ENDPOINT = process.env.AZURE_SEARCH_ENDPOINT!;
     const AZURE_SEARCH_API_KEY = process.env.AZURE_SEARCH_API_KEY!;
@@ -37,9 +37,9 @@ function getClients(): { openaiClient: AzureOpenAI, searchClient: SearchClient<{
         apiVersion: AZURE_OPENAI_VERSION
     });
 
-    const searchClient = new SearchClient<{ HotelName: string; Description: string; Tags: string[] | string }>(
+    const searchClient = new SearchClient<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>(
         AZURE_SEARCH_ENDPOINT,
-        AZURE_SEARCH_INDEX_NAME,
+        "hotels-sample-index",
         new AzureKeyCredential(AZURE_SEARCH_API_KEY)
     );
 
@@ -47,24 +47,21 @@ function getClients(): { openaiClient: AzureOpenAI, searchClient: SearchClient<{
     return { openaiClient, searchClient, modelName: AZURE_OPENAI_DEPLOYMENT_MODEL };
 }
 
-async function queryAISearchForSources(searchClient: SearchClient<{ HotelName: string; Description: string; Tags: string[] | string }>, query: string): Promise<string> {
+async function queryAISearchForSources(
+    searchClient: SearchClient<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>,
+    query: string
+): Promise<SearchDocumentsResult<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>> {
     console.log(`Searching for: "${query}"\n`);
-    const searchResults: SearchDocumentsResult<{ HotelName: string; Description: string; Tags: string[] | string }> = await searchClient.search(query, {
+
+    const selectedFields: readonly ["HotelName", "Description", "Address", "Rooms", "Tags"] = ["HotelName", "Description", "Address", "Rooms", "Tags"];
+    const searchResults = await searchClient.search(query, {
         top: 5,
-        select: ["Description", "HotelName", "Tags"]
+        select: selectedFields,
+        queryType: "semantic",
+        semanticSearchOptions: {},
     });
 
-    const sources: string[] = [];
-    for await (const result of searchResults.results) {
-        const doc = result.document;
-        sources.push(
-            `Hotel: ${doc.HotelName}\n` +
-            `Description: ${doc.Description}\n` +
-            `Tags: ${Array.isArray(doc.Tags) ? doc.Tags.join(', ') : doc.Tags}\n`
-        );
-    }
-    const sourcesFormatted = sources.join("\n---\n");
-    return sourcesFormatted;
+    return searchResults;
 }
 async function queryOpenAIForResponse(
     openaiClient: AzureOpenAI, 
@@ -97,14 +94,24 @@ Sources: {sources}
     });
 }
 
-async function main():Promise<void> {
+async function main(): Promise<void> {
 
     const { openaiClient, searchClient, modelName } = getClients();
 
-    const query = "Can you recommend a few hotels with complimentary breakfast?";
+    const query = `
+    Can you recommend a few hotels that offer complimentary breakfast? 
+    Tell me their description, address, tags, and the rate for one room that sleeps 4 people.
+    `;
 
-    const sources = await queryAISearchForSources(searchClient, query);
-    const response = await queryOpenAIForResponse(openaiClient, query, sources, modelName);
+    const sourcesResult = await queryAISearchForSources(searchClient, query);
+    let sourcesFormatted = "";
+
+    for await (const result of sourcesResult.results) {
+        // Explicitly typing result to ensure compatibility
+        sourcesFormatted += JSON.stringify(result.document) + "\n";
+    }
+
+    const response = await queryOpenAIForResponse(openaiClient, query, sourcesFormatted.trim(), modelName);
 
     // Print the response from the chat model
     console.log(response.choices[0].message.content);

@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc --build",
-    "start": "node -r dotenv/config dist/query.js"
+    "start": "AZURE_LOG_LEVEL=verbose node -r dotenv/config dist/query.js",
+    "start:complex": "AZURE_LOG_LEVEL=info node -r dotenv/config dist/complex-query.js"
   },
   "keywords": [],
   "author": "",
