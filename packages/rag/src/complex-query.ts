@@ -6,7 +6,7 @@
 // 5. Returns a grounded response based only on the retrieved information
 
 import { SearchClient, AzureKeyCredential, SearchDocumentsResult } from "@azure/search-documents";
-import CreateChatCompletionResponse, { AzureOpenAI } from "openai";
+import { AzureOpenAI } from "openai";
 
 function getClients(): { openaiClient: AzureOpenAI; searchClient: SearchClient<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>; modelName: string }  {
 
@@ -39,7 +39,7 @@ function getClients(): { openaiClient: AzureOpenAI; searchClient: SearchClient<{
 
     const searchClient = new SearchClient<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>(
         AZURE_SEARCH_ENDPOINT,
-        "hotels-sample-index",
+        AZURE_SEARCH_INDEX_NAME,
         new AzureKeyCredential(AZURE_SEARCH_API_KEY)
     );
 
@@ -68,7 +68,7 @@ async function queryOpenAIForResponse(
     query: string, 
     sourcesFormatted: string, 
     modelName: string
-): Promise<CreateChatCompletionResponse> {
+): Promise<{ choices: { message: { content: string | null } }[] }> {
 
     const GROUNDED_PROMPT = `
  You are a friendly assistant that recommends hotels based on activities and amenities.
@@ -114,7 +114,12 @@ async function main(): Promise<void> {
     const response = await queryOpenAIForResponse(openaiClient, query, sourcesFormatted.trim(), modelName);
 
     // Print the response from the chat model
-    console.log(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    if (content) {
+        console.log(content);
+    } else {
+        console.log("No content available in the response.");
+    }
 }
 
 main().catch((error) => {
