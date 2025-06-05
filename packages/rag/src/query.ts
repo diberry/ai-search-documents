@@ -47,7 +47,7 @@ function getClients() {
     return { openaiClient, searchClient, modelName: AZURE_OPENAI_DEPLOYMENT_MODEL };
 }
 
-async function querySearchForSources(searchClient: SearchClient<any>, query: string) {
+async function queryAISearchForSources(searchClient: SearchClient<any>, query: string) {
     console.log(`Searching for: "${query}"\n`);
     const searchResults = await searchClient.search(query, {
         top: 5,
@@ -98,7 +98,7 @@ async function main() {
 
     const query = process.argv[2] || "Can you recommend a few hotels with complimentary breakfast?";
 
-    const sources = await querySearchForSources(searchClient, query);
+    const sources = await queryAISearchForSources(searchClient, query);
     const response = await queryOpenAIForResponse(openaiClient, query, sources, modelName);
 
     // Print the response from the chat model
