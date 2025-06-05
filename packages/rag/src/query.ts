@@ -1,46 +1,74 @@
-import { DefaultAzureCredential, getBearerTokenProvider } from "@azure/identity";
+// This is a RAG (Retrieval Augmented Generation) implementation that:
+// 1. Takes a user query about hotels
+// 2. Searches a hotel database using Azure AI Search
+// 3. Formats the search results for the LLM
+// 4. Sends the query and formatted results to Azure OpenAI
+// 5. Returns a grounded response based only on the retrieved information
+
 import { SearchClient, AzureKeyCredential } from "@azure/search-documents";
 import { AzureOpenAI } from "openai";
 
-const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT!;
-const AZURE_SEARCH_ENDPOINT = process.env.AZURE_SEARCH_ENDPOINT!;
-const AZURE_DEPLOYMENT_MODEL = process.env.AZURE_DEPLOYMENT_MODEL!;
-const AZURE_SEARCH_API_KEY = process.env.AZURE_SEARCH_API_KEY!;
-const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY!;
-const AZURE_OPENAI_VERSION = process.env.AZURE_OPENAI_VERSION!;
+function getClients() {
 
-if (
-  !AZURE_OPENAI_ENDPOINT ||
-  !AZURE_SEARCH_ENDPOINT ||
-  !AZURE_DEPLOYMENT_MODEL ||
-  !AZURE_SEARCH_API_KEY ||
-  !AZURE_OPENAI_VERSION ||
-  !AZURE_OPENAI_API_KEY
-) {
-  throw new Error("Missing required environment variables.");
+    const AZURE_SEARCH_ENDPOINT = process.env.AZURE_SEARCH_ENDPOINT!;
+    const AZURE_SEARCH_API_KEY = process.env.AZURE_SEARCH_API_KEY!;
+    const AZURE_SEARCH_INDEX_NAME = process.env.AZURE_SEARCH_INDEX_NAME!;
+
+    const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT!;
+    const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY!;
+    const AZURE_OPENAI_VERSION = process.env.AZURE_OPENAI_VERSION!;
+    const AZURE_OPENAI_DEPLOYMENT_MODEL = process.env.AZURE_DEPLOYMENT_MODEL!;
+
+    if (
+        !AZURE_OPENAI_ENDPOINT ||
+        !AZURE_SEARCH_ENDPOINT ||
+        !AZURE_SEARCH_INDEX_NAME ||
+        !AZURE_OPENAI_DEPLOYMENT_MODEL ||
+        !AZURE_SEARCH_API_KEY ||
+        !AZURE_OPENAI_VERSION ||
+        !AZURE_OPENAI_API_KEY
+    ) {
+        throw new Error("Missing required environment variables.");
+    }
+
+    const openaiClient = new AzureOpenAI({
+        apiKey: AZURE_OPENAI_API_KEY,
+        endpoint: AZURE_OPENAI_ENDPOINT,
+        apiVersion: AZURE_OPENAI_VERSION
+    });
+
+    const searchClient = new SearchClient(
+        AZURE_SEARCH_ENDPOINT,
+        "hotels-sample-index",
+        new AzureKeyCredential(AZURE_SEARCH_API_KEY)
+    );
+
+
+    return { openaiClient, searchClient, modelName: AZURE_OPENAI_DEPLOYMENT_MODEL };
 }
 
-// Set up Azure credentials
-// const credential = new DefaultAzureCredential();
-// const tokenProvider = getBearerTokenProvider(credential, "https://cognitiveservices.azure.com/.default");
+async function querySearchForSources(searchClient: SearchClient<any>, query: string) {
+    console.log(`Searching for: "${query}"\n`);
+    const searchResults = await searchClient.search(query, {
+        top: 5,
+        select: ["Description", "HotelName", "Tags"]
+    });
 
-// Set up OpenAI client (Azure OpenAI)
-const openaiClient = new AzureOpenAI({
-  apiKey: AZURE_OPENAI_API_KEY,
-  endpoint: AZURE_OPENAI_ENDPOINT,
-  apiVersion: AZURE_OPENAI_VERSION
-});
+    const sources: string[] = [];
+    for await (const result of searchResults.results) {
+        const doc = result.document as any;
+        sources.push(
+            `Hotel: ${doc.HotelName}\n` +
+            `Description: ${doc.Description}\n` +
+            `Tags: ${Array.isArray(doc.Tags) ? doc.Tags.join(', ') : doc.Tags}\n`
+        );
+    }
+    const sourcesFormatted = sources.join("\n---\n");
+    return sourcesFormatted;
+}
+async function queryOpenAIForResponse(openaiClient: AzureOpenAI, query: string, sourcesFormatted: string, modelName: string) {
 
-// Set up Azure Search client
-const searchClient = new SearchClient(
-  AZURE_SEARCH_ENDPOINT,
-  "hotels-sample-index",
-  new AzureKeyCredential(AZURE_SEARCH_API_KEY)
-);
-
-// Prompt template for RAG (Retrieval Augmented Generation)
-const GROUNDED_PROMPT = `
-
+    const GROUNDED_PROMPT = `
  You are a friendly assistant that recommends hotels based on activities and amenities.
  Answer the query using only the sources provided below in a friendly and concise bulleted manner.
  Answer ONLY with the facts listed in the list of sources below.
@@ -49,50 +77,35 @@ const GROUNDED_PROMPT = `
 
 Query: {query}
 Sources: {sources}
-
 `;
 
-// Get the user's query from command line arguments or use default
-const query = process.argv[2] || "Can you recommend a few hotels with complimentary breakfast?";
+    return openaiClient.chat.completions.create({
+        model: modelName,
+        messages: [
+            {
+                role: "user",
+                content: GROUNDED_PROMPT.replace("{query}", query).replace("{sources}", sourcesFormatted),
+            }
+        ],
+        temperature: 0.7,
+        max_tokens: 800,
+    });
+}
 
 async function main() {
-  console.log(`Searching for: "${query}"\n`);
-  // Search for relevant hotels using standard keyword search
-  // For hybrid search or vector search, we would need additional configuration
-  const searchResults = await searchClient.search(query, {
-    top: 5,
-    select: ["Description", "HotelName", "Tags"]
-  });
 
-  const sources: string[] = [];
-  for await (const result of searchResults.results) {
-    const doc = result.document as any;
-    sources.push(
-      `Hotel: ${doc.HotelName}\n` + 
-      `Description: ${doc.Description}\n` + 
-      `Tags: ${Array.isArray(doc.Tags) ? doc.Tags.join(', ') : doc.Tags}\n`
-    );
-  }
-  const sourcesFormatted = sources.join("\n---\n");
+    const { openaiClient, searchClient, modelName } = getClients();
 
-  // Send the search results and the query to the LLM to generate a response based on the prompt.
-  const response = await openaiClient.chat.completions.create({
-    model: AZURE_DEPLOYMENT_MODEL,
-    messages: [
-      {
-        role: "user",
-        content: GROUNDED_PROMPT.replace("{query}", query).replace("{sources}", sourcesFormatted),
-      }
-    ],
-    temperature: 0.7,
-    max_tokens: 800,
-  });
+    const query = process.argv[2] || "Can you recommend a few hotels with complimentary breakfast?";
 
-  // Print the response from the chat model
-  console.log(response.choices[0].message.content);
+    const sources = await querySearchForSources(searchClient, query);
+    const response = await queryOpenAIForResponse(openaiClient, query, sources, modelName);
+
+    // Print the response from the chat model
+    console.log(response.choices[0].message.content);
 }
 
 main().catch((error) => {
-  console.error("An error occurred:", error);
-  process.exit(1);
+    console.error("An error occurred:", error);
+    process.exit(1);
 });
