@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc --build",
+    "start": "node -r dotenv/config dist/query.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "@azure/identity": "latest",
+    "@azure/search-documents": "^12.2.0-alpha.20250603.1",
+    "openai": "latest"
+  }
 }
