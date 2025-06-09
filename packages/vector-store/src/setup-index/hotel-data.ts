@@ -1,5 +1,6 @@
 import { Hotel } from './models.js';
 
+
 export const HOTELS: Hotel[] = [
     {
         "@search.action": "mergeOrUpload",

@@ -10,7 +10,7 @@ import {
   SearchFieldArray,
   SearchIndex,
 } from "@azure/search-documents";
-import type { Hotel, HotelIndex, HotelData } from "./models.js";
+import type { Hotel } from "./models.js";
 import "dotenv/config";
 
 
