@@ -15,11 +15,8 @@ import "dotenv/config";
 
 
 // Import data
-import indexFile from "./hotel-index.json" with { type: "json" };
-import dataFile from "./hotel-data.json" with { type: "json" };
-const indexDefinition: SearchIndex = indexFile as unknown as SearchIndex;
-const hotels: Hotel[] = (dataFile as HotelData).value;
-
+import { HOTEL_INDEX_DEFINITION } from "./hotel-index.js";
+import { HOTELS } from "./hotel-data.js";
 
 // Get endpoint and apiKey from .env file
 const endpoint: string = process.env.SEARCH_API_ENDPOINT!!;
@@ -243,6 +240,6 @@ async function main(indexName: string, indexDef: SearchIndex, hotels: Hotel[]) {
 
 }
 
-main(indexDefinition?.name, indexDefinition, hotels).catch((err) => {
+main("hotel-index", HOTEL_INDEX_DEFINITION, HOTELS).catch((err) => {
   console.error("The sample encountered an error:", err);
 });
