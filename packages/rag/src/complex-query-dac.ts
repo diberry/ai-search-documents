@@ -5,55 +5,44 @@
 // 4. Sends the query and formatted results to Azure OpenAI
 // 5. Returns a grounded response based only on the retrieved information
 
-import { SearchClient, AzureKeyCredential } from "@azure/search-documents";
+import { SearchClient, AzureKeyCredential, SearchDocumentsResult } from "@azure/search-documents";
 import { AzureOpenAI } from "openai";
+import { DefaultAzureCredential, getBearerTokenProvider } from "@azure/identity";
 
-function getClients()  {
+function getClients(): { openaiClient: AzureOpenAI; searchClient: SearchClient<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>; modelName: string }  {
 
-    const AZURE_SEARCH_ENDPOINT = process.env.AZURE_SEARCH_ENDPOINT;
-    const AZURE_SEARCH_API_KEY = process.env.AZURE_SEARCH_API_KEY;
-    const AZURE_SEARCH_INDEX_NAME = process.env.AZURE_SEARCH_INDEX_NAME;
+    const credential = new DefaultAzureCredential();
 
-    const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
-    const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY;
-    const AZURE_OPENAI_VERSION = process.env.AZURE_OPENAI_VERSION;
-    const AZURE_OPENAI_DEPLOYMENT_MODEL = process.env.AZURE_DEPLOYMENT_MODEL;
-
-    if (
-        !AZURE_OPENAI_ENDPOINT ||
-        !AZURE_SEARCH_ENDPOINT ||
-        !AZURE_SEARCH_INDEX_NAME ||
-        !AZURE_OPENAI_DEPLOYMENT_MODEL ||
-        !AZURE_SEARCH_API_KEY ||
-        !AZURE_OPENAI_VERSION ||
-        !AZURE_OPENAI_API_KEY
-    ) {
-        throw new Error("Missing required environment variables.");
-    }
-
-    const openaiClient = new AzureOpenAI({
-        apiKey: AZURE_OPENAI_API_KEY,
-        endpoint: AZURE_OPENAI_ENDPOINT,
-        apiVersion: AZURE_OPENAI_VERSION
-    });
-
-    const searchClient = new SearchClient(
-        AZURE_SEARCH_ENDPOINT,
-        AZURE_SEARCH_INDEX_NAME,
-        new AzureKeyCredential(AZURE_SEARCH_API_KEY)
+    // Search
+    const azureSearchEndpoint = process.env.AZURE_SEARCH_ENDPOINT!;
+    const azureSearchIndexName = process.env.AZURE_SEARCH_INDEX_NAME!;
+    const searchClient = new SearchClient<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>(
+        azureSearchEndpoint,
+        azureSearchIndexName,
+        credential
     );
 
+    // OpenAI
+    const azureOpenAiEndpoint = process.env.AZURE_OPENAI_ENDPOINT!;
+    const azureOpenAiApiVersion = process.env.AZURE_OPENAI_VERSION!;
+    const azureOpenAiDeploymentName = process.env.AZURE_DEPLOYMENT_MODEL!;
 
-    return { openaiClient, searchClient, modelName: AZURE_OPENAI_DEPLOYMENT_MODEL };
+    const scope = "https://cognitiveservices.azure.com/.default";
+    const azureADTokenProvider = getBearerTokenProvider(credential, scope);
+    const options = { azureADTokenProvider, deployment: azureOpenAiDeploymentName, apiVersion: azureOpenAiApiVersion, endpoint: azureOpenAiEndpoint }
+    const openaiClient = new AzureOpenAI(options);
+
+    return { openaiClient, searchClient, modelName: azureOpenAiDeploymentName };
 }
 
+
 async function queryAISearchForSources(
-    searchClient,
-    query
-) {
+    searchClient: SearchClient<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>,
+    query: string
+): Promise<SearchDocumentsResult<{ HotelName: string; Description: string; Tags: string[] | string; Address: string; Rooms: string }>> {
     console.log(`Searching for: "${query}"\n`);
 
-    const selectedFields = ["HotelName", "Description", "Address", "Rooms", "Tags"];
+    const selectedFields: readonly ["HotelName", "Description", "Address", "Rooms", "Tags"] = ["HotelName", "Description", "Address", "Rooms", "Tags"];
     const searchResults = await searchClient.search(query, {
         top: 5,
         select: selectedFields,
@@ -64,11 +53,11 @@ async function queryAISearchForSources(
     return searchResults;
 }
 async function queryOpenAIForResponse(
-    openaiClient, 
-    query, 
-    sourcesFormatted, 
-    modelName
-) {
+    openaiClient: AzureOpenAI, 
+    query: string, 
+    sourcesFormatted: string, 
+    modelName: string
+): Promise<{ choices: { message: { content: string | null } }[] }> {
 
     const GROUNDED_PROMPT = `
  You are a friendly assistant that recommends hotels based on activities and amenities.
@@ -94,7 +83,7 @@ Sources: {sources}
     });
 }
 
-async function main() {
+async function main(): Promise<void> {
 
     const { openaiClient, searchClient, modelName } = getClients();
 

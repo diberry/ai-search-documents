@@ -12,8 +12,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@azure/identity": "latest",
+    "@azure/identity": "^4.10.0",
     "@azure/search-documents": "^12.2.0-alpha.20250603.1",
+    "dotenv": "^16.5.0",
     "openai": "latest"
   }
 }
