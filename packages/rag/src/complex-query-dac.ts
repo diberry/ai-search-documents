@@ -5,7 +5,7 @@
 // 4. Sends the query and formatted results to Azure OpenAI
 // 5. Returns a grounded response based only on the retrieved information
 
-import { SearchClient, AzureKeyCredential, SearchDocumentsResult } from "@azure/search-documents";
+import { SearchClient, SearchDocumentsResult } from "@azure/search-documents";
 import { AzureOpenAI } from "openai";
 import { DefaultAzureCredential, getBearerTokenProvider } from "@azure/identity";
 
