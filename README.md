@@ -1,0 +1,1 @@
+This sample assumes typescript is globally installed.

@@ -1,0 +1,21 @@
+{
+  "name": "rag-ts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc --build",
+    "start": "AZURE_LOG_LEVEL=verbose node -r dotenv/config dist/query.js",
+    "start:complex": "AZURE_LOG_LEVEL=info node -r dotenv/config dist/complex-query.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@azure/identity": "^4.10.0",
+    "@azure/search-documents": "^12.2.0-alpha.20250603.1",
+    "@types/node": "^24.0.1",
+    "dotenv": "^16.5.0",
+    "openai": "latest"
+  }
+}
