@@ -1,8 +1,7 @@
 import type {
   SimpleField,
   ComplexField,
-  SearchSuggester,
-  GeographyPoint
+  SearchSuggester
 } from "@azure/search-documents";
 export type Address = {
   StreetAddress: string;
@@ -12,6 +11,17 @@ export type Address = {
   Country: string;
 };
 
+export type Location = {
+  type: "Point";
+  coordinates: [number, number];
+  crs?: {
+    type: string;
+    properties: {
+      name: string;
+    };
+  };
+};
+
 export type Hotel = {
   "@search.action": "mergeOrUpload" | "upload" | "merge" | "delete";
   HotelId: string;
@@ -19,23 +29,26 @@ export type Hotel = {
   HotelNameVector: number[];
   Description: string;
   DescriptionVector: number[];
+  Description_fr?: string;
+  Description_frVector?: number[];
   Category: string;
   Tags: string[];
-  Description_fr: string;
-  Description_frVector: number[];
   ParkingIncluded: boolean;
-  LastRenovationDate: string;
-  Rating: number;
+  LastRenovationDate?: string;
+  Rating?: number;
   Address: Address;
-  Location: {
-    type: string;
-    coordinates: number[]
-    crs?: CRS;
-  };
+  Location: Location;
 };
-export type CRS = {
-  type: string;
-  properties: {
-    name: string;
-  };
+
+// Define the file-level object type
+export type HotelData = {
+  value: Hotel[];
+};
+
+export type HotelIndex = {
+  name: string;
+  fields: SimpleField[] | ComplexField[];
+  vectorSearch: any;
+  semantic: any;
+  suggesters: SearchSuggester[];
 };
