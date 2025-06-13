@@ -1,11 +1,11 @@
 {
-  "name": "vector-store",
+  "name": "vector-store-ts",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "build": "tsc --build",
-    "start:setup": "node -r dotenv/config dist/setup-index/index.js"
+    "start:setup": "node -r dotenv/config dist/setup/index.js"
   },
   "keywords": [],
   "author": "",

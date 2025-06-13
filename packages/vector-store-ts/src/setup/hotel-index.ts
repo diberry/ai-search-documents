@@ -8,7 +8,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.String",
             "searchable": false, 
             "filterable": true, 
-            "hidden": true, 
+            "hidden": false, 
             "sortable": false, 
             "facetable": false,
             "key": true
@@ -18,7 +18,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.String",
             "searchable": true, 
             "filterable": false, 
-            "hidden": true, 
+            "hidden": false, 
             "sortable": true, 
             "facetable": false
         },
@@ -26,7 +26,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "name": "HotelNameVector",
             "type": "Collection(Edm.Single)",
             "searchable": true,
-            "hidden": true,
+            "hidden": false,
             "vectorSearchDimensions": 1536,
             "vectorSearchProfileName": "my-vector-profile"
         },
@@ -35,7 +35,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.String",
             "searchable": true, 
             "filterable": false, 
-            "hidden": true, 
+            "hidden": false, 
             "sortable": false, 
             "facetable": false
         },
@@ -43,7 +43,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "name": "DescriptionVector",
             "type": "Collection(Edm.Single)",
             "searchable": true,
-            "hidden": true,
+            "hidden": false,
             "vectorSearchDimensions": 1536,
             "vectorSearchProfileName": "my-vector-profile"
         },
@@ -52,7 +52,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.String",
             "searchable": true, 
             "filterable": false, 
-            "hidden": true, 
+            "hidden": false, 
             "sortable": false, 
             "facetable": false,
             "analyzerName": "en.microsoft"
@@ -61,7 +61,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "name": "Description_frvector",
             "type": "Collection(Edm.Single)",
             "searchable": true,
-            "hidden": true,
+            "hidden": false,
             "vectorSearchDimensions": 1536,
             "vectorSearchProfileName": "my-vector-profile"
         },
@@ -70,7 +70,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.String",
             "searchable": true, 
             "filterable": true, 
-            "hidden": true, 
+            "hidden": false, 
             "sortable": true, 
             "facetable": true
         },
@@ -79,7 +79,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Collection(Edm.String)",
             "searchable": true,
             "filterable": true,
-            "hidden": true,
+            "hidden": false,
             "sortable": false,
             "facetable": true
         },
@@ -88,7 +88,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.Boolean",
             "searchable": false,
             "filterable": true,
-            "hidden": true,
+            "hidden": false,
             "sortable": true,
             "facetable": true
         },
@@ -97,7 +97,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.DateTimeOffset",
             "searchable": false,
             "filterable": true,
-            "hidden": true,
+            "hidden": false,
             "sortable": true,
             "facetable": true
         },
@@ -106,7 +106,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.Double",
             "searchable": false,
             "filterable": true,
-            "hidden": true,
+            "hidden": false,
             "sortable": true,
             "facetable": true
         },
@@ -116,23 +116,23 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "fields": [
                 {
                     "name": "StreetAddress", "type": "Edm.String",
-                    "searchable": true, "filterable": false, "hidden": true, "sortable": false, "facetable": false
+                    "searchable": true, "filterable": false, "hidden": false, "sortable": false, "facetable": false
                 },
                 {
                     "name": "City", "type": "Edm.String",
-                    "searchable": true, "filterable": true, "hidden": true, "sortable": true, "facetable": true
+                    "searchable": true, "filterable": true, "hidden": false, "sortable": true, "facetable": true
                 },
                 {
                     "name": "StateProvince", "type": "Edm.String",
-                    "searchable": true, "filterable": true, "hidden": true, "sortable": true, "facetable": true
+                    "searchable": true, "filterable": true, "hidden": false, "sortable": true, "facetable": true
                 },
                 {
                     "name": "PostalCode", "type": "Edm.String",
-                    "searchable": true, "filterable": true, "hidden": true, "sortable": true, "facetable": true
+                    "searchable": true, "filterable": true, "hidden": false, "sortable": true, "facetable": true
                 },
                 {
                     "name": "Country", "type": "Edm.String",
-                    "searchable": true, "filterable": true, "hidden": true, "sortable": true, "facetable": true
+                    "searchable": true, "filterable": true, "hidden": false, "sortable": true, "facetable": true
                 }
             ]
         },
@@ -141,7 +141,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.GeographyPoint",
             "searchable": false, 
             "filterable": true, 
-            "hidden": true, 
+            "hidden": false, 
             "sortable": true, 
             "facetable": false
         }
@@ -184,19 +184,19 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             }
       ]
     },
-    "semantic": {
+    "semanticSearch": {
         "configurations": [
             {
                 "name": "my-semantic-config",
                 "prioritizedFields": {
                     "titleField": {
-                        "fieldName": "HotelName"
+                        "name": "HotelName"
                     },
-                    "prioritizedContentFields": [
-                        { "fieldName": "Description" }
+                    "contentFields": [
+                        { "name": "Description" }
                     ],
-                    "prioritizedKeywordsFields": [
-                        { "fieldName": "Category" }
+                    "keywordsFields": [
+                        { "name": "Category" }
                     ]
                 }
             }

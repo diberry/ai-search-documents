@@ -23,14 +23,11 @@ export type Location = {
 };
 
 export type Hotel = {
-  "@search.action": "mergeOrUpload" | "upload" | "merge" | "delete";
+  "@search.action"?: "mergeOrUpload" | "upload" | "merge" | "delete";
   HotelId: string;
   HotelName: string;
-  HotelNameVector: number[];
   Description: string;
   DescriptionVector: number[];
-  Description_fr?: string;
-  Description_frVector?: number[];
   Category: string;
   Tags: string[];
   ParkingIncluded: boolean;

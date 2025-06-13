@@ -1,25 +1,39 @@
 import {
   SearchIndexClient,
-  SimpleField,
-  ComplexField,
-  SearchSuggester,
   SearchClient,
-  SearchDocumentsResult,
-  AzureKeyCredential,
-  odata,
-  SearchFieldArray,
   SearchIndex,
 } from "@azure/search-documents";
 import type { Hotel } from "./models.js";
 import "dotenv/config";
-
+import { DefaultAzureCredential} from "@azure/identity";
 
 // Import data
 import { HOTEL_INDEX_DEFINITION } from "./hotel-index.js";
 import { HOTELS } from "./hotel-data.js";
 
-// Get endpoint and apiKey from .env file
-const endpoint: string = process.env.SEARCH_API_ENDPOINT!!;
+const azureSearchEndpoint = process.env.AZURE_SEARCH_ENDPOINT!;
+
+const azureSearchIndexName = process.env.AZURE_SEARCH_INDEX_NAME!;
+
+
+function getClients(): { searchClient: SearchClient<Hotel>, searchIndexClient: SearchIndexClient } {
+
+    const credential = new DefaultAzureCredential();
+    
+    const searchClient = new SearchClient<Hotel>(
+        azureSearchEndpoint,
+        azureSearchIndexName,
+        credential
+    );
+
+    // Create SearchIndexClient with the same endpoint and credential
+    const searchIndexClient = new SearchIndexClient(
+        azureSearchEndpoint, 
+        credential
+    );
+
+    return { searchClient, searchIndexClient };
+}
 
 
 function printSearchIndex(searchIndex: SearchIndex) {
@@ -32,7 +46,41 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Get Incoming Data
+async function pollIndexForDocuments(
+  searchIndexClient: SearchIndexClient,
+  indexName: string,
+  expectedCount: number,
+  maxAttempts: number = 30,
+  pollIntervalMs: number = 5000
+): Promise<void> {
+  console.log(`Polling index '${indexName}' for ${expectedCount} documents...`);
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const indexStats = await searchIndexClient.getIndexStatistics(indexName);
+      const documentCount = indexStats.documentCount;
+      
+      console.log(`Attempt ${attempt}/${maxAttempts}: Index contains ${documentCount} documents`);
+      
+      if (documentCount >= expectedCount) {
+        console.log(`✅ Index now contains ${documentCount} documents. Polling complete.`);
+        return;
+      }
+      
+      if (attempt < maxAttempts) {
+        console.log(`⏳ Waiting ${pollIntervalMs/1000} seconds before next check...`);
+        await wait(pollIntervalMs);
+      }
+    } catch (error) {
+      console.warn(`Warning: Error checking index statistics (attempt ${attempt}):`, error);
+      if (attempt < maxAttempts) {
+        await wait(pollIntervalMs);
+      }
+    }
+  }
+  
+  console.warn(`⚠️ Polling completed after ${maxAttempts} attempts. Index may still be processing documents.`);
+}
 
 async function createIndex(
   searchIndexClient: SearchIndexClient,
@@ -53,8 +101,8 @@ async function createIndex(
   printSearchIndex(newIndex);
 }
 async function loadData(
-  searchClient: any,
-  hotels: any,
+  searchClient: SearchClient<Hotel>,
+  hotels: Hotel[],
 ) {
   console.log("Uploading documents...");
 
@@ -68,29 +116,26 @@ async function loadData(
 }
 
 
-async function main(indexName: string, indexDef: SearchIndex, hotels: Hotel[]) {
+async function main(indexDef: SearchIndex, hotels: Hotel[]) {
   // Create a new SearchIndexClient
-  const indexClient = new SearchIndexClient(
-    endpoint,
-    new AzureKeyCredential(apiKey),
-  );
+  const { searchIndexClient, searchClient } = getClients();
+
 
   // Create the index
-  await createIndex(indexClient, indexName, indexDef);
-
-  const searchClient = indexClient.getSearchClient(indexName);
-  //const searchClient = new SearchClient(endpoint, indexName, new AzureKeyCredential(apiKey));
-
+  await createIndex(searchIndexClient, azureSearchIndexName, indexDef);
+  await wait(10000);
 
   // Load with data
-  console.log("Loading data...", indexName);
+  console.log("Loading data...", azureSearchIndexName);
   await loadData(searchClient, hotels);
 
-  wait(10000);
+  // Poll the index until all documents are indexed
+  await pollIndexForDocuments(searchIndexClient, azureSearchIndexName, hotels.length);
 
+  console.log("✅ Index setup and document loading completed successfully!");
 
 }
 
-main("hotel-index", HOTEL_INDEX_DEFINITION, HOTELS).catch((err) => {
+main(HOTEL_INDEX_DEFINITION, HOTELS).catch((err) => {
   console.error("The sample encountered an error:", err);
 });
