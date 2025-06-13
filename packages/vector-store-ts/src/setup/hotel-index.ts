@@ -8,7 +8,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.String",
             "searchable": false, 
             "filterable": true, 
-            "hidden": true, 
+            "retrievable": true, 
             "sortable": false, 
             "facetable": false,
             "key": true
@@ -18,24 +18,16 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.String",
             "searchable": true, 
             "filterable": false, 
-            "hidden": true, 
+            "retrievable": true, 
             "sortable": true, 
             "facetable": false
-        },
-        {
-            "name": "HotelNameVector",
-            "type": "Collection(Edm.Single)",
-            "searchable": true,
-            "hidden": true,
-            "vectorSearchDimensions": 1536,
-            "vectorSearchProfileName": "my-vector-profile"
         },
         {
             "name": "Description", 
             "type": "Edm.String",
             "searchable": true, 
             "filterable": false, 
-            "hidden": true, 
+            "retrievable": true, 
             "sortable": false, 
             "facetable": false
         },
@@ -43,34 +35,16 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "name": "DescriptionVector",
             "type": "Collection(Edm.Single)",
             "searchable": true,
-            "hidden": true,
-            "vectorSearchDimensions": 1536,
-            "vectorSearchProfileName": "my-vector-profile"
-        },
-                {
-            "name": "Description_fr", 
-            "type": "Edm.String",
-            "searchable": true, 
-            "filterable": false, 
-            "hidden": true, 
-            "sortable": false, 
-            "facetable": false,
-            "analyzerName": "en.microsoft"
-        },
-        {
-            "name": "Description_frvector",
-            "type": "Collection(Edm.Single)",
-            "searchable": true,
-            "hidden": true,
-            "vectorSearchDimensions": 1536,
-            "vectorSearchProfileName": "my-vector-profile"
+            "retrievable": true,
+            "dimensions": 1536,
+            "vectorSearchProfile": "my-vector-profile"
         },
         {
             "name": "Category", 
             "type": "Edm.String",
             "searchable": true, 
             "filterable": true, 
-            "hidden": true, 
+            "retrievable": true, 
             "sortable": true, 
             "facetable": true
         },
@@ -79,7 +53,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Collection(Edm.String)",
             "searchable": true,
             "filterable": true,
-            "hidden": true,
+            "retrievable": true,
             "sortable": false,
             "facetable": true
         },
@@ -88,7 +62,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.Boolean",
             "searchable": false,
             "filterable": true,
-            "hidden": true,
+            "retrievable": true,
             "sortable": true,
             "facetable": true
         },
@@ -97,7 +71,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.DateTimeOffset",
             "searchable": false,
             "filterable": true,
-            "hidden": true,
+            "retrievable": true,
             "sortable": true,
             "facetable": true
         },
@@ -106,7 +80,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.Double",
             "searchable": false,
             "filterable": true,
-            "hidden": true,
+            "retrievable": true,
             "sortable": true,
             "facetable": true
         },
@@ -116,23 +90,23 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "fields": [
                 {
                     "name": "StreetAddress", "type": "Edm.String",
-                    "searchable": true, "filterable": false, "hidden": true, "sortable": false, "facetable": false
+                    "searchable": true, "filterable": false, "retrievable": true, "sortable": false, "facetable": false
                 },
                 {
                     "name": "City", "type": "Edm.String",
-                    "searchable": true, "filterable": true, "hidden": true, "sortable": true, "facetable": true
+                    "searchable": true, "filterable": true, "retrievable": true, "sortable": true, "facetable": true
                 },
                 {
                     "name": "StateProvince", "type": "Edm.String",
-                    "searchable": true, "filterable": true, "hidden": true, "sortable": true, "facetable": true
+                    "searchable": true, "filterable": true, "retrievable": true, "sortable": true, "facetable": true
                 },
                 {
                     "name": "PostalCode", "type": "Edm.String",
-                    "searchable": true, "filterable": true, "hidden": true, "sortable": true, "facetable": true
+                    "searchable": true, "filterable": true, "retrievable": true, "sortable": true, "facetable": true
                 },
                 {
                     "name": "Country", "type": "Edm.String",
-                    "searchable": true, "filterable": true, "hidden": true, "sortable": true, "facetable": true
+                    "searchable": true, "filterable": true, "retrievable": true, "sortable": true, "facetable": true
                 }
             ]
         },
@@ -141,7 +115,7 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
             "type": "Edm.GeographyPoint",
             "searchable": false, 
             "filterable": true, 
-            "hidden": true, 
+            "retrievable": true, 
             "sortable": true, 
             "facetable": false
         }
@@ -149,9 +123,9 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
     "vectorSearch": {
         "algorithms": [
             {
-                "name": "my-hnsw-vector-config-1",
+                "name": "hnsw-vector-config",
                 "kind": "hnsw",
-                "parameters": 
+                "hnswParameters": 
                 {
                     "m": 4,
                     "efConstruction": 400,
@@ -160,18 +134,9 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
                 }
             },
             {
-                "name": "my-hnsw-vector-config-2",
-                "kind": "hnsw",
-                "parameters": 
-                {
-                    "m": 4,
-                    "metric": "euclidean"
-                }
-            },
-            {
-                "name": "my-eknn-vector-config",
+                "name": "eknn-vector-config",
                 "kind": "exhaustiveKnn",
-                "parameters": 
+                "exhaustiveKnnParameters": 
                 {
                     "metric": "cosine"
                 }
@@ -180,14 +145,14 @@ export const HOTEL_INDEX_DEFINITION: SearchIndex = {
         "profiles": [      
             {
                 "name": "my-vector-profile",
-                "algorithmConfigurationName": "my-hnsw-vector-config-1"
+                "algorithm": "hnsw-vector-config"
             }
       ]
     },
     "semantic": {
         "configurations": [
             {
-                "name": "my-semantic-config",
+                "name": "semantic-config",
                 "prioritizedFields": {
                     "titleField": {
                         "fieldName": "HotelName"

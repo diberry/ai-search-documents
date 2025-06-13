@@ -20,12 +20,7 @@ import { HOTELS } from "./hotel-data.js";
 
 // Get endpoint and apiKey from .env file
 const endpoint: string = process.env.SEARCH_API_ENDPOINT!!;
-const apiKey: string = process.env.SEARCH_API_KEY!!;
-if (!endpoint || !apiKey) {
-  throw new Error(
-    "Make sure to set valid values for endpoint and apiKey with proper authorization.",
-  );
-}
+
 
 function printSearchIndex(searchIndex: SearchIndex) {
   const { name, etag, defaultScoringProfile } = searchIndex;
