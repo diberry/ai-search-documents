@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc --build",
-    "start:setup": "node -r dotenv/config dist/setup/index.js"
+    "start:setup": "node -r dotenv/config dist/setup/index.js",
+    "start:query": "node -r dotenv/config dist/queries/index.js"
   },
   "keywords": [],
   "author": "",
